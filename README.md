@@ -32,7 +32,7 @@ The pipeline is designed to handle high-resolution uploads and transform them in
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/your-repo/media-optimizer.git
+git clone https://github.com/The-Rigid-Project/media-optimizer.git
 ```
 
 

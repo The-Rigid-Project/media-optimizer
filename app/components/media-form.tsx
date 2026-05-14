@@ -12,6 +12,7 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 export default function MediaForm() {
     const [selectedFile, setSelectedFile] = useState<File | Blob | null>(null);
+    const [mediaType, setMediaType] = useState<"image" | "video" | "gif" | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [dimensions, setDimensions] = useState<MediaDimensions | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -44,7 +45,6 @@ export default function MediaForm() {
                     quality: 0.8,
                 });
 
-                // heic2any can return an array if multiple images are in the HEIC
                 processedFile = Array.isArray(converted) ? converted[0] : converted;
             } catch (err) {
                 setError("Failed to convert HEIC image. Please try a standard format.");
@@ -53,11 +53,20 @@ export default function MediaForm() {
             }
         }
 
-        // Final Validation on the (potentially converted) file
         if (processedFile.size > MAX_FILE_SIZE) {
             setError("File is too large. Maximum size is 5MB.");
             setIsProcessing(false);
             return;
+        }
+
+        const type = processedFile.type;
+
+        if (type === "image/gif") {
+            setMediaType("gif");
+        } else if (type.startsWith("image/")) {
+            setMediaType("image");
+        } else if (type.startsWith("video/")) {
+            setMediaType("video");
         }
 
         const url = URL.createObjectURL(processedFile);
@@ -73,6 +82,44 @@ export default function MediaForm() {
             setIsProcessing(false);
         };
         img.src = url;
+    };
+
+    const uploadAndOptimize = async () => {
+        if (!selectedFile || !dimensions || !mediaType) return;
+
+        setIsProcessing(true);
+        setError(null);
+
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+        formData.append("width", dimensions.width.toString());
+        formData.append("height", dimensions.height.toString());
+
+        try {
+            const response = await fetch(`/api/optimize-${mediaType}`, {
+                method: "POST",
+                body: formData,
+            });
+
+            if (!response.ok) throw new Error(`Optimization failed for ${mediaType}`);
+
+            const optimizedBlob = await response.blob();
+
+            // Cleanup and update preview with optimized version
+            if (previewUrl) URL.revokeObjectURL(previewUrl);
+
+            const optimizedUrl = URL.createObjectURL(optimizedBlob);
+
+            console.log(optimizedUrl);
+
+            setPreviewUrl(optimizedUrl);
+            setSelectedFile(optimizedBlob);
+
+        } catch (err) {
+            setError("Failed to optimize media. Please try again.");
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
     return (
@@ -91,7 +138,7 @@ export default function MediaForm() {
             </div>
 
             {isProcessing && (
-                <div className="flex items-center gap-2 text-sm text-blue-600 animate-pulse">
+                <div className="flex items-center gap-2 text-sm text-blue-600 animate-pulse font-medium">
                     <span>Processing media...</span>
                 </div>
             )}
@@ -99,33 +146,37 @@ export default function MediaForm() {
             {error && <p className="text-red-500 text-xs font-bold">{error}</p>}
 
             {previewUrl && dimensions && !isProcessing && (
-                <div className="flex flex-col items-center animate-in fade-in duration-500">
+                <div className="flex flex-col items-center animate-in fade-in duration-500 gap-4">
                     <div className="relative overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800">
                         <Image
                             src={previewUrl}
                             alt="Media Preview"
-                            // We pass the intrinsic dimensions for the aspect ratio calculation
                             width={dimensions.width}
                             height={dimensions.height}
-                            // Using unoptimized since we are showing a local blob URL
                             unoptimized
                             className="object-contain"
                             style={{
                                 maxHeight: "65vh",
-                                width: "auto", // Allows width to scale relative to height
-                                height: "auto", // Allows height to shrink if it's naturally < 300px
+                                width: "auto",
+                                height: "auto",
                                 display: "block",
                             }}
                         />
                     </div>
-                    <div className="mt-3 flex justify-between w-full text-[10px] tracking-widest text-zinc-500 font-bold">
-                        <span>
-                            {dimensions.width}x{dimensions.height}
-                        </span>
+
+                    <div className="flex justify-between w-full text-[10px] tracking-widest text-zinc-500 font-bold uppercase">
+                        <span>{dimensions.width}x{dimensions.height}</span>
                         {selectedFile && (
                             <span>{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</span>
                         )}
                     </div>
+
+                    <button
+                        onClick={uploadAndOptimize}
+                        className="cursor-pointer w-full py-3 bg-black dark:bg-white text-white dark:text-black font-bold rounded-lg text-sm hover:opacity-90 transition-opacity active:scale-[0.98]"
+                    >
+                        Optimize {mediaType === 'gif' ? 'GIF' : 'Image'}
+                    </button>
                 </div>
             )}
         </div>
