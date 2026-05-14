@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## Media Optimizer
 
-## Getting Started
+Modern social media platforms don't just serve raw, unoptimized files. To ensure instant load speeds, they generate multiple responsive versions of assets. This repository provides a robust, Next.js-native approach to media processing, ensuring smaller data footprints and significantly faster client-side rendering.
 
-First, run the development server:
+---
 
+### Core Logic
+
+The pipeline is designed to handle high-resolution uploads and transform them into web-ready formats. By generating a variety of resolutions and qualities, we minimize the **Largest Contentful Paint (LCP)** and reduce bandwidth costs for both the server and the end-user.
+
+### Key Features
+
+* **iPhone Compatibility:** Automated conversion of HEIC/HEIF images to standard web formats using `heic2any`.
+* **High-Performance Image Processing:** Leverages `sharp` for lightning-fast resizing, cropping, and WebP/AVIF encoding.
+* **Video Transcoding:** Integrated `fluent-ffmpeg` pipeline to compress videos and generate thumbnails.
+* **Next.js Integration:** Built specifically to work within API routes or Server Actions for a seamless full-stack experience.
+
+---
+
+### Tech Stack
+
+| Dependency | Purpose |
+| --- | --- |
+| **sharp** | High-speed Node.js image processing. |
+| **heic2any** | Client-side conversion of Apple's HEIC format. |
+| **fluent-ffmpeg** | A fluent API for FFMPEG to process video streams. |
+| **@ffmpeg-installer/ffmpeg** | Provides the FFMPEG binary for various environments. |
+
+---
+
+### Installation
+
+1. Clone the repository:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/your-repo/media-optimizer.git
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+2. Install the necessary packages:
+```bash
+npm install sharp heic2any fluent-ffmpeg @ffmpeg-installer/ffmpeg
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## Learn More
+3. Ensure your environment has the necessary permissions for file system writes if you are processing files locally.
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Usage Example
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```javascript
+import sharp from 'sharp';
 
-## Deploy on Vercel
+export async function optimizeImage(buffer) {
+  return await sharp(buffer)
+    .resize(800) // Resize to 800px width
+    .webp({ quality: 80 }) // Convert to WebP
+    .toBuffer();
+}
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This ensures that regardless of the source file size, your application serves a performant, optimized version every time.
